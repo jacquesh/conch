@@ -9,7 +9,7 @@ use std::time::Duration;
 fn handle_connection(keys_unlocked: Arc<Mutex<Vec<String>>>, mut stream: TcpStream, leased_key: String) {
     let mut sequence_nr = 0u8;
     loop {
-        thread::sleep(Duration::from_secs(2));
+        thread::sleep(Duration::from_secs(10));
         match stream.write(slice::from_ref(&sequence_nr)) {
             Ok(_) => {},
             Err(err) => {
@@ -31,7 +31,7 @@ fn handle_connection(keys_unlocked: Arc<Mutex<Vec<String>>>, mut stream: TcpStre
                 break;
             }
         }
-        sequence_nr += 1;
+        sequence_nr = sequence_nr.wrapping_add(1);
     }
 
     let mut keys_locked = keys_unlocked.lock().expect("Failed to acquire the key set mutex");
@@ -55,7 +55,7 @@ fn main() {
 
     for stream in listener.incoming() {
         let mut stream = stream.expect("Failed to create new TCP stream from incoming connection");
-        stream.set_read_timeout(Some(Duration::from_millis(100))).expect("Failed to set socket read timeout");
+        stream.set_read_timeout(Some(Duration::from_millis(30000))).expect("Failed to set socket read timeout");
         stream.set_write_timeout(Some(Duration::from_millis(10))).expect("Failed to set socket write timeout");
         let mut setname_len = 0;
         stream.read_exact(slice::from_mut(&mut setname_len)).unwrap();
