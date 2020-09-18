@@ -97,7 +97,7 @@ conch_result conch_lease_key(const char* set_name, char* output_buffer, unsigned
     }
 
     // Send the request
-    unsigned int set_name_length = strlen(set_name);
+    size_t set_name_length = strlen(set_name);
     if(set_name_length > 256)
     {
         closesocket(connectSocket);
@@ -107,7 +107,7 @@ conch_result conch_lease_key(const char* set_name, char* output_buffer, unsigned
     unsigned char send_buffer[257];
     send_buffer[0] = (unsigned char)(set_name_length & 0xFF);
     memcpy(send_buffer+1, set_name, set_name_length);
-    int sendResult = send(connectSocket, (char*)send_buffer, set_name_length+1, 0);
+    int sendResult = send(connectSocket, (char*)send_buffer, (int)set_name_length+1, 0);
     if(sendResult == SOCKET_ERROR)
     {
         printf("send failed with error: %d\n", WSAGetLastError());
@@ -123,7 +123,12 @@ conch_result conch_lease_key(const char* set_name, char* output_buffer, unsigned
     if (recv_result > 0)
     {
         printf("Bytes received: %d\n", recv_result);
-        int recv_str_len = (int)recvbuf[0];
+        if(recvbuf[0] < 0)
+        {
+            return CONCH_UNKNOWN_ERROR; // TODO: Invalid length received
+        }
+
+        unsigned int recv_str_len = (unsigned int)recvbuf[0];
         if(recv_str_len == 0)
         {
             return CONCH_UNKNOWN_ERROR; // TODO: No values available
@@ -131,16 +136,16 @@ conch_result conch_lease_key(const char* set_name, char* output_buffer, unsigned
 
         if(output_buffer_length < recv_str_len+1)
         {
-            return CONCH_UNKNOWN_ERROR; // TODO
+            return CONCH_UNKNOWN_ERROR; // TODO: Output buffer too small
         }
 
-        int total_received = recv_result;
+        unsigned int total_received = recv_result;
         while(total_received < recv_str_len+1)
         {
             recv_result = recv(connectSocket, recvbuf+total_received, recvbuflen-total_received, 0);
             if(recv_result > 0)
             {
-                total_received += recv_result;
+                total_received += (unsigned int)recv_result;
             }
             else if(recv_result == 0)
             {
